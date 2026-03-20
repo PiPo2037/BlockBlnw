@@ -43,54 +43,49 @@ const cell = 40;
 
 let selectedShape = null;
 
-// ===== DRAW =====
+// DRAW
 function draw(){
   ctx.clearRect(0,0,320,320);
-
-  for(let i=0;i<8;i++){
-    for(let j=0;j<8;j++){
-
+  for(let i=0;i<SIZE;i++){
+    for(let j=0;j<SIZE;j++){
       ctx.strokeStyle="#555";
-      ctx.strokeRect(j*40,i*40,40,40);
-
+      ctx.strokeRect(j*cell,i*cell,cell,cell);
       if(board[i][j]){
         ctx.fillStyle="#4caf50";
-        ctx.fillRect(j*40,i*40,40,40);
+        ctx.fillRect(j*cell,i*cell,cell,cell);
       }
-
     }
   }
 }
 
-// ===== CLICK BOARD (สร้างสถานการณ์เอง) =====
+// CLICK BOARD
 canvas.addEventListener("click", function(e){
-  let rect = canvas.getBoundingClientRect();
-  let x = Math.floor((e.clientY - rect.top)/40);
-  let y = Math.floor((e.clientX - rect.left)/40);
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.floor((e.clientY - rect.top)/cell);
+  const y = Math.floor((e.clientX - rect.left)/cell);
 
-  board[x][y] = board[x][y] ? 0 : 1;
-  draw();
+  if(x>=0 && x<SIZE && y>=0 && y<SIZE){
+    board[x][y] ^= 1;
+    draw();
+  }
 });
 
-// ===== SELECT SHAPE =====
+// SELECT SHAPE
 function selectShape(index){
   selectedShape = shapes[index];
 
-  // reset สี
   for(let i=0;i<4;i++){
     document.getElementById("btn"+i).classList.remove("selected");
   }
-
-  // ทำให้ปุ่มที่เลือกติดสี
   document.getElementById("btn"+index).classList.add("selected");
 }
 
-// ===== CHECK PLACE =====
+// CHECK
 function canPlace(shape,x,y){
   for(let i=0;i<shape.length;i++){
     for(let j=0;j<shape[0].length;j++){
       if(shape[i][j]){
-        if(x+i>=8 || y+j>=8) return false;
+        if(x+i>=SIZE || y+j>=SIZE) return false;
         if(board[x+i][y+j]) return false;
       }
     }
@@ -98,31 +93,29 @@ function canPlace(shape,x,y){
   return true;
 }
 
-// ===== SIMULATE =====
+// SIMULATE
 function simulate(shape,x,y){
   let temp = board.map(r=>r.slice());
-
   for(let i=0;i<shape.length;i++){
     for(let j=0;j<shape[0].length;j++){
       if(shape[i][j]){
-        temp[x+i][y+j] = 1;
+        temp[x+i][y+j]=1;
       }
     }
   }
-
   return temp;
 }
 
-// ===== EVALUATE (หัวใจ AI) =====
+// EVALUATE
 function evaluate(b){
   let empty = 0;
   let holes = 0;
 
-  for(let i=0;i<8;i++){
-    for(let j=0;j<8;j++){
+  for(let i=0;i<SIZE;i++){
+    for(let j=0;j<SIZE;j++){
       if(b[i][j]==0) empty++;
       else{
-        if(i+1<8 && b[i+1][j]==0) holes++;
+        if(i+1<SIZE && b[i+1][j]==0) holes++;
       }
     }
   }
@@ -130,22 +123,19 @@ function evaluate(b){
   return empty - holes*3;
 }
 
-// ===== SUGGEST MOVE (AI จริง) =====
+// SUGGEST
 function suggestMove(){
-
   if(!selectedShape){
     alert("เลือกบล็อกก่อน");
     return;
   }
 
-  let bestScore = -9999;
+  let bestScore = -Infinity;
   let best = null;
 
-  for(let x=0;x<8;x++){
-    for(let y=0;y<8;y++){
-
+  for(let x=0;x<SIZE;x++){
+    for(let y=0;y<SIZE;y++){
       if(canPlace(selectedShape,x,y)){
-
         let sim = simulate(selectedShape,x,y);
         let score = evaluate(sim);
 
@@ -153,9 +143,7 @@ function suggestMove(){
           bestScore = score;
           best = [x,y];
         }
-
       }
-
     }
   }
 
@@ -166,9 +154,13 @@ function suggestMove(){
   }
 }
 
-// ===== RESET =====
+// RESET
 function resetBoard(){
   board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
+  selectedShape = null;
+  for(let i=0;i<4;i++){
+    document.getElementById("btn"+i).classList.remove("selected");
+  }
   draw();
 }
 
