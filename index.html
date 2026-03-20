@@ -31,10 +31,11 @@ button { margin:5px; padding:8px; }
 const SIZE = 8;
 const SHAPE_SIZE = 5;
 
+const COLORS = ["#ff4444","#ff9900","#00aaff"];
+
 let board = createBoard();
 let shapes = [createShape(), createShape(), createShape()];
 
-// ================= CREATE =================
 function createBoard(){
   return Array.from({length:SIZE},()=>Array(SIZE).fill(0));
 }
@@ -42,7 +43,6 @@ function createShape(){
   return Array.from({length:SHAPE_SIZE},()=>Array(SHAPE_SIZE).fill(0));
 }
 
-// ================= DRAW =================
 const boardCanvas = document.getElementById("board");
 const bctx = boardCanvas.getContext("2d");
 
@@ -60,7 +60,6 @@ function drawBoard(b = board){
   }
 }
 
-// click board
 boardCanvas.addEventListener("click",(e)=>{
   const rect = boardCanvas.getBoundingClientRect();
   const x = Math.floor((e.clientY - rect.top)/40);
@@ -72,7 +71,6 @@ boardCanvas.addEventListener("click",(e)=>{
   }
 });
 
-// shapes
 const shapeCanvas = [
   document.getElementById("shape0"),
   document.getElementById("shape1"),
@@ -100,18 +98,19 @@ function drawShape(i){
     for(let y=0;y<5;y++){
       ctx.strokeStyle="#555";
       ctx.strokeRect(y*40,x*40,40,40);
+
       if(shapes[i][x][y]){
-        ctx.fillStyle="#00ff88";
+        ctx.fillStyle=COLORS[i];
         ctx.fillRect(y*40,x*40,40,40);
       }
     }
   }
 }
+
 function drawAllShapes(){
   for(let i=0;i<3;i++) drawShape(i);
 }
 
-// ================= CORE =================
 function trimShape(shape){
   let minX=5,minY=5,maxX=0,maxY=0,found=false;
 
@@ -126,6 +125,7 @@ function trimShape(shape){
       }
     }
   }
+
   if(!found) return [[0]];
 
   let res=[];
@@ -136,6 +136,7 @@ function trimShape(shape){
     }
     res.push(row);
   }
+
   return res;
 }
 
@@ -191,7 +192,6 @@ function simulate(board,shape,x,y){
   return temp;
 }
 
-// ================= RESET =================
 function resetBoard(){
   board = createBoard();
   shapes = [createShape(), createShape(), createShape()];
@@ -200,7 +200,6 @@ function resetBoard(){
   document.getElementById("preview").innerHTML="";
 }
 
-// ================= AI =================
 function evaluateBoard(b){
   let empty = 0;
   let holes = 0;
@@ -211,6 +210,7 @@ function evaluateBoard(b){
       else if(i+1<SIZE && !b[i+1][j]) holes++;
     }
   }
+
   return empty - holes*3;
 }
 
@@ -270,7 +270,6 @@ function searchBestSequence(){
   return bestSeq;
 }
 
-// ================= UI =================
 function drawMiniBoard(containerId,b){
   let container=document.getElementById(containerId);
   container.innerHTML="";
@@ -290,7 +289,7 @@ function drawMiniBoard(containerId,b){
 }
 
 function showAI(){
-  let seq = searchBestSequence(); // ✅ FIX
+  let seq = searchBestSequence();
 
   if(!seq || seq.length===0){
     alert("ไม่มีทางวาง");
@@ -318,7 +317,7 @@ function showAI(){
 }
 
 function applyAI(){
-  let seq = searchBestSequence(); // ✅ FIX
+  let seq = searchBestSequence();
 
   if(!seq || seq.length===0){
     alert("ใช้ไม่ได้");
@@ -340,7 +339,6 @@ function applyAI(){
   document.getElementById("preview").innerHTML="";
 }
 
-// ================= INIT =================
 drawBoard();
 drawAllShapes();
 
