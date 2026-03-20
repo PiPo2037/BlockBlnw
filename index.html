@@ -13,7 +13,13 @@ canvas { background:#111; margin-top:20px; }
 <h2>Block AI</h2>
 <canvas id="game" width="320" height="320"></canvas>
 <br>
-<button onclick="runAI()">AI MOVE</button>
+<button onclick="selectShape(0)">■</button>
+<button onclick="selectShape(1)">—</button>
+<button onclick="selectShape(2)">|</button>
+<button onclick="selectShape(3)">L</button>
+
+<br><br>
+<button onclick="suggestMove()">แนะนำ</button>
 
 <script>
 const SIZE = 8;
@@ -90,6 +96,38 @@ function runAI(){
 }
 
 draw();
+let selectedShape = null;
+
+function selectShape(index){
+  selectedShape = shapes[index];
+  alert("เลือกบล็อกแล้ว");
+}
+
+function suggestMove(){
+
+  if(!selectedShape){
+  alert("เลือกบล็อกก่อน");
+  return;
+}
+  let best = null;
+
+  for(let x=0;x<8;x++){
+    for(let y=0;y<8;y++){
+
+      if(canPlace(selectedShape,x,y)){
+        best = [x,y];
+        break;
+      }
+
+    }
+  }
+
+  if(best){
+    alert("วางที่: แถว "+best[0]+" คอลัมน์ "+best[1]);
+  } else {
+    alert("วางไม่ได้");
+  }
+}
 </script>
 
 </body>
