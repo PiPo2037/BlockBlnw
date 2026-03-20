@@ -2,25 +2,22 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Block AI PRO</title>
+<title>Block AI ENGINE</title>
 <style>
 body { background:#222; color:#fff; text-align:center; font-family:sans-serif; }
 canvas { background:#111; margin:10px; }
 .wrap { display:flex; justify-content:center; gap:20px; flex-wrap:wrap; }
-button { margin:4px; padding:8px; }
-.selected { background:green; color:#fff; }
+.preview { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+button { margin:5px; padding:8px; }
 </style>
 </head>
 <body>
 
-<h2>Block AI PRO</h2>
+<h2>Block AI ENGINE</h2>
 
-<!-- MAIN BOARD -->
 <canvas id="board" width="320" height="320"></canvas>
-
 <br>
-<button onclick="suggestSequence()">แนะนำลำดับวาง</button>
-<button onclick="resetBoard()">รีเซ็ตกระดาน</button>
+<button onclick="resetBoard()">รีเซ็ต</button>
 
 <div class="wrap">
   <canvas id="shape0" width="200" height="200"></canvas>
@@ -28,91 +25,109 @@ button { margin:4px; padding:8px; }
   <canvas id="shape2" width="200" height="200"></canvas>
 </div>
 
+<div class="preview" id="preview"></div>
+
 <script>
+// =======================
+// STATE
+// =======================
 const SIZE = 8;
 const SHAPE_SIZE = 5;
-let board = Array.from({length: SIZE}, ()=>Array(SIZE).fill(0));
-let shapes = [
-  createEmptyShape(),
-  createEmptyShape(),
-  createEmptyShape()
-];
 
-let selectedShapeIndex = 0;
+let board = createBoard();
+let shapes = [createShape(), createShape(), createShape()];
 
-// ===== CREATE =====
-function createEmptyShape(){
-  return Array.from({length: SHAPE_SIZE}, ()=>Array(SHAPE_SIZE).fill(0));
+// =======================
+// CREATE
+// =======================
+function createBoard(){
+  return Array.from({length:SIZE},()=>Array(SIZE).fill(0));
 }
 
-// ===== DRAW BOARD =====
+function createShape(){
+  return Array.from({length:SHAPE_SIZE},()=>Array(SHAPE_SIZE).fill(0));
+}
+
+// =======================
+// DRAW BOARD
+// =======================
 const boardCanvas = document.getElementById("board");
 const bctx = boardCanvas.getContext("2d");
-const cell = 40;
 
-function drawBoard(){
+function drawBoard(b = board){
   bctx.clearRect(0,0,320,320);
+
   for(let i=0;i<SIZE;i++){
     for(let j=0;j<SIZE;j++){
+
       bctx.strokeStyle="#555";
-      bctx.strokeRect(j*cell,i*cell,cell,cell);
-      if(board[i][j]){
+      bctx.strokeRect(j*40,i*40,40,40);
+
+      if(b[i][j]){
         bctx.fillStyle="#4caf50";
-        bctx.fillRect(j*cell,i*cell,cell,cell);
+        bctx.fillRect(j*40,i*40,40,40);
       }
+
     }
   }
 }
 
-// click board
-boardCanvas.addEventListener("click", e=>{
-  let r = boardCanvas.getBoundingClientRect();
-  let x = Math.floor((e.clientY-r.top)/cell);
-  let y = Math.floor((e.clientX-r.left)/cell);
-  if(x>=0&&y>=0&&x<SIZE&&y<SIZE){
-    board[x][y]^=1;
+// =======================
+// CLICK BOARD
+// =======================
+boardCanvas.addEventListener("click",(e)=>{
+  const rect = boardCanvas.getBoundingClientRect();
+
+  const x = Math.floor((e.clientY - rect.top)/40);
+  const y = Math.floor((e.clientX - rect.left)/40);
+
+  if(x>=0 && y>=0 && x<SIZE && y<SIZE){
+    board[x][y] ^= 1;
     drawBoard();
   }
 });
 
-// ===== DRAW SHAPES =====
-const shapeCanvases = [
+// =======================
+// DRAW SHAPES
+// =======================
+const shapeCanvas = [
   document.getElementById("shape0"),
   document.getElementById("shape1"),
   document.getElementById("shape2")
 ];
 
-shapeCanvases.forEach((c,idx)=>{
-  c.addEventListener("click", e=>{
-    let rect = c.getBoundingClientRect();
-    let x = Math.floor((e.clientY-rect.top)/40);
-    let y = Math.floor((e.clientX-rect.left)/40);
+shapeCanvas.forEach((canvas,index)=>{
 
-    if(x>=0&&y>=0&&x<5&&y<5){
-      shapes[idx][x][y]^=1;
-      drawShape(idx);
+  canvas.addEventListener("click",(e)=>{
+    const rect = canvas.getBoundingClientRect();
+
+    const x = Math.floor((e.clientY - rect.top)/40);
+    const y = Math.floor((e.clientX - rect.left)/40);
+
+    if(x>=0 && y>=0 && x<5 && y<5){
+      shapes[index][x][y] ^= 1;
+      drawShape(index);
     }
   });
 
-  c.addEventListener("dblclick", ()=>{
-    selectedShapeIndex = idx;
-    drawAllShapes();
-  });
 });
 
 function drawShape(i){
-  let ctx = shapeCanvases[i].getContext("2d");
+  const ctx = shapeCanvas[i].getContext("2d");
+
   ctx.clearRect(0,0,200,200);
 
   for(let x=0;x<5;x++){
     for(let y=0;y<5;y++){
+
       ctx.strokeStyle="#555";
       ctx.strokeRect(y*40,x*40,40,40);
 
       if(shapes[i][x][y]){
-        ctx.fillStyle = (i===selectedShapeIndex) ? "#00ff88" : "#4caf50";
+        ctx.fillStyle="#00ff88";
         ctx.fillRect(y*40,x*40,40,40);
       }
+
     }
   }
 }
@@ -121,13 +136,19 @@ function drawAllShapes(){
   for(let i=0;i<3;i++) drawShape(i);
 }
 
-// ===== TRIM SHAPE =====
+// =======================
+// CORE FUNCTIONS
+// =======================
+
+// trim shape
 function trimShape(shape){
   let minX=5,minY=5,maxX=0,maxY=0;
+  let found=false;
 
   for(let i=0;i<5;i++){
     for(let j=0;j<5;j++){
       if(shape[i][j]){
+        found=true;
         minX=Math.min(minX,i);
         minY=Math.min(minY,j);
         maxX=Math.max(maxX,i);
@@ -136,90 +157,141 @@ function trimShape(shape){
     }
   }
 
-  let res=[];
+  if(!found) return [[0]];
+
+  let result=[];
   for(let i=minX;i<=maxX;i++){
     let row=[];
     for(let j=minY;j<=maxY;j++){
       row.push(shape[i][j]);
     }
-    res.push(row);
+    result.push(row);
   }
 
-  return res;
+  return result;
 }
 
-// ===== CHECK =====
+// check place
 function canPlace(shape,x,y,b){
   for(let i=0;i<shape.length;i++){
     for(let j=0;j<shape[0].length;j++){
+
       if(shape[i][j]){
-        if(x+i>=8||y+j>=8) return false;
+        if(x+i>=SIZE || y+j>=SIZE) return false;
         if(b[x+i][y+j]) return false;
       }
+
     }
   }
   return true;
 }
 
-// ===== CLEAR LINES =====
+// clear lines (loop until stable)
 function clearLines(b){
-  let score=0;
+  let changed=true;
 
-  // rows
-  for(let i=0;i<8;i++){
-    if(b[i].every(v=>v==1)){
-      score+=10;
-      for(let j=0;j<8;j++) b[i][j]=0;
+  while(changed){
+    changed=false;
+
+    // rows
+    for(let i=0;i<SIZE;i++){
+      if(b[i].every(v=>v==1)){
+        for(let j=0;j<SIZE;j++) b[i][j]=0;
+        changed=true;
+      }
+    }
+
+    // cols
+    for(let j=0;j<SIZE;j++){
+      let full=true;
+      for(let i=0;i<SIZE;i++){
+        if(!b[i][j]) full=false;
+      }
+
+      if(full){
+        for(let i=0;i<SIZE;i++) b[i][j]=0;
+        changed=true;
+      }
     }
   }
-
-  // cols
-  for(let j=0;j<8;j++){
-    let full=true;
-    for(let i=0;i<8;i++) if(!b[i][j]) full=false;
-
-    if(full){
-      score+=10;
-      for(let i=0;i<8;i++) b[i][j]=0;
-    }
-  }
-
-  return score;
 }
 
-// ===== SIMULATE =====
-function simulate(b,shape,x,y){
-  let temp = b.map(r=>r.slice());
+// simulate
+function simulate(board,shape,x,y){
+  let temp = board.map(r=>r.slice());
 
   for(let i=0;i<shape.length;i++){
     for(let j=0;j<shape[0].length;j++){
       if(shape[i][j]){
-        temp[x+i][y+j]=1;
+        temp[x+i][y+j] = 1;
       }
     }
   }
 
-  let score = clearLines(temp);
-  return {board:temp, score};
+  clearLines(temp);
+
+  return temp;
 }
 
-// ===== EVALUATE =====
-function evaluate(b){
-  let empty=0;
-  for(let i=0;i<8;i++){
-    for(let j=0;j<8;j++){
+// =======================
+// RESET
+// =======================
+function resetBoard(){
+  board = createBoard();
+  shapes = [createShape(), createShape(), createShape()];
+  drawBoard();
+  drawAllShapes();
+  document.getElementById("preview").innerHTML="";
+}
+
+// =======================
+// INIT
+// =======================
+drawBoard();
+drawAllShapes();
+// =======================
+// AI ENGINE
+// =======================
+
+// ประเมินบอร์ด (ยิ่งโล่งยิ่งดี + ลดรู)
+function evaluateBoard(b){
+  let empty = 0;
+  let holes = 0;
+
+  for(let i=0;i<SIZE;i++){
+    for(let j=0;j<SIZE;j++){
       if(!b[i][j]) empty++;
+      else{
+        if(i+1<SIZE && !b[i+1][j]) holes++;
+      }
     }
   }
-  return empty;
+
+  return empty - holes*3;
 }
 
-// ===== SEARCH 3 STEPS =====
-function searchSequence(){
-  let bestScore=-9999;
-  let bestSeq=null;
+// ลองวางทุกตำแหน่ง
+function getAllMoves(shape, b){
+  let moves = [];
 
-  let perms = [
+  for(let x=0;x<SIZE;x++){
+    for(let y=0;y<SIZE;y++){
+      if(canPlace(shape,x,y,b)){
+        moves.push([x,y]);
+      }
+    }
+  }
+
+  return moves;
+}
+
+// ลองทุกลำดับ 3 บล็อก
+function searchBestSequence(){
+
+  let bestScore = -Infinity;
+  let bestSeq = null;
+
+  const perms = [
     [0,1,2],[0,2,1],
     [1,0,2],[1,2,0],
     [2,0,1],[2,1,0]
@@ -227,70 +299,260 @@ function searchSequence(){
 
   for(let p of perms){
 
-    function dfs(depth,b,total,steps){
-      if(depth==3){
-        let val = total + evaluate(b);
-        if(val>bestScore){
-          bestScore=val;
-          bestSeq=[...steps];
+    function dfs(depth, currentBoard, steps, score){
+
+      if(depth === 3){
+        let finalScore = score + evaluateBoard(currentBoard);
+
+        if(finalScore > bestScore){
+          bestScore = finalScore;
+          bestSeq = [...steps];
         }
         return;
       }
 
-      let shape = trimShape(shapes[p[depth]]);
-      let moved=false;
+      let rawShape = shapes[p[depth]];
+      let shape = trimShape(rawShape);
 
-      for(let x=0;x<8;x++){
-        for(let y=0;y<8;y++){
-
-          if(canPlace(shape,x,y,b)){
-            let sim = simulate(b,shape,x,y);
-            dfs(depth+1,sim.board,total+sim.score,[
-              ...steps,
-              {shape:p[depth],x,y}
-            ]);
-            moved=true;
-          }
-
-        }
+      // กัน shape ว่าง
+      if(shape.length === 1 && shape[0][0] === 0){
+        dfs(depth+1, currentBoard, steps, score);
+        return;
       }
 
-      if(!moved){
-        dfs(depth+1,b,total,steps);
+      let moves = getAllMoves(shape, currentBoard);
+
+      if(moves.length === 0){
+        dfs(depth+1, currentBoard, steps, score);
+        return;
+      }
+
+      for(let [x,y] of moves){
+
+        let nextBoard = simulate(currentBoard, shape, x, y);
+
+        dfs(
+          depth+1,
+          nextBoard,
+          [...steps, {shape:p[depth], x, y}],
+          score
+        );
       }
     }
 
-    dfs(0,board,0,[]);
+    dfs(0, board, [], 0);
   }
 
   return bestSeq;
 }
+  // ========================
+// UI PREVIEW RESULT
+// ========================
 
-// ===== RUN =====
-function suggestSequence(){
-  let seq = searchSequence();
+function drawMiniBoard(containerId, b){
+  let container = document.getElementById(containerId);
+  container.innerHTML = "";
 
-  if(!seq){
+  let size = 20;
+
+  for(let i=0;i<SIZE;i++){
+    for(let j=0;j<SIZE;j++){
+      let cell = document.createElement("div");
+      cell.style.width = size+"px";
+      cell.style.height = size+"px";
+      cell.style.display = "inline-block";
+      cell.style.border = "1px solid #333";
+
+      if(b[i][j]){
+        cell.style.background = "#4caf50";
+      } else {
+        cell.style.background = "#111";
+      }
+
+      container.appendChild(cell);
+    }
+    let br = document.createElement("br");
+    container.appendChild(br);
+  }
+}
+
+
+// ========================
+// แสดงลำดับ AI
+// ========================
+
+function showAI(){
+  let seq = findBestSequence();
+
+  if(!seq || seq.length === 0){
     alert("ไม่มีทางวาง");
     return;
   }
 
-  let txt="";
-  seq.forEach(s=>{
-    txt += "บล็อก "+s.shape+" → ("+s.x+","+s.y+")\n";
+  let tempBoard = JSON.parse(JSON.stringify(board));
+
+  document.getElementById("preview").innerHTML = "";
+
+  seq.forEach((step, index)=>{
+
+    let shape = trimShape(shapes[step.shape]);
+
+    tempBoard = simulate(tempBoard, shape, step.x, step.y);
+
+    let title = document.createElement("div");
+    title.innerText = "STEP " + (index+1) + " → บล็อก " + step.shape + " ("+step.x+","+step.y+")";
+    title.style.marginTop = "10px";
+    document.getElementById("preview").appendChild(title);
+
+    let mini = document.createElement("div");
+    mini.id = "mini_"+index;
+    mini.style.marginBottom = "10px";
+
+    document.getElementById("preview").appendChild(mini);
+
+    drawMiniBoard(mini.id, tempBoard);
+
   });
 
-  alert(txt);
 }
 
-// ===== RESET =====
-function resetBoard(){
-  board = Array.from({length: SIZE}, ()=>Array(SIZE).fill(0));
+
+// ========================
+// APPLY (เซฟใช้ต่อ)
+// ========================
+
+function applyAI(){
+  let seq = findBestSequence();
+
+  if(!seq || seq.length === 0){
+    alert("ใช้ไม่ได้");
+    return;
+  }
+
+  let tempBoard = JSON.parse(JSON.stringify(board));
+
+  seq.forEach(step=>{
+    let shape = trimShape(shapes[step.shape]);
+    tempBoard = simulate(tempBoard, shape, step.x, step.y);
+  });
+
+  board = tempBoard;
+
+  shapes = [createShape(), createShape(), createShape()];
+
+  drawBoard();
+  drawAllShapes();
+
+  document.getElementById("preview").innerHTML = "";
+}
+
+
+// ========================
+// ปุ่ม UI (เรียกใช้)
+// ========================
+
+document.body.insertAdjacentHTML("beforeend", `
+<br><br>
+<button onclick="showAI()">แนะนำลำดับ</button>
+<button onclick="applyAI()">เซฟใช้ต่อไป</button>
+
+<div id="preview" style="margin-top:20px;"></div>
+`); 
+</script>
+<script>
+// ========================
+// FIX BUG + HARDEN SYSTEM
+// ========================
+
+// กัน crash ถ้า shape undefined
+function safeShape(index){
+  if(!shapes[index]) return [[0]];
+  return shapes[index];
+}
+
+// กันค่า NaN / undefined
+function safeBoard(b){
+  if(!b) return createBoard();
+  return b;
+}
+
+// ========================
+// DEBUG PANEL
+// ========================
+
+function debugInfo(){
+  console.log("BOARD:", board);
+  console.log("SHAPES:", shapes);
+}
+
+// ========================
+// AUTO CLEAR FULL LINES (double check)
+// ========================
+
+function forceClear(){
+  clearLines(board);
   drawBoard();
 }
 
-drawBoard();
-drawAllShapes();
+// ========================
+// TEST AI (stress test)
+// ========================
+
+function testAI(times=10){
+  for(let i=0;i<times;i++){
+    let seq = findBestSequence();
+    if(seq && seq.length){
+      applyAI();
+    } else {
+      break;
+    }
+  }
+}
+
+// ========================
+// VISUAL FEEDBACK SELECT
+// ========================
+
+let selectedIndex = -1;
+
+function highlightSelected(){
+  let buttons = document.querySelectorAll("button[data-shape]");
+  buttons.forEach(btn=>{
+    btn.style.background = "#fff";
+  });
+
+  if(selectedIndex >= 0){
+    let btn = document.querySelector(`button[data-shape="${selectedIndex}"]`);
+    if(btn) btn.style.background = "#4caf50";
+  }
+}
+
+// override selectShape
+function selectShape(index){
+  selectedIndex = index;
+  selectedShape = shapes[index];
+  highlightSelected();
+}
+
+// ========================
+// PREVENT INVALID MOVE
+// ========================
+
+function canUseSequence(seq){
+  if(!seq) return false;
+  return seq.length > 0;
+}
+
+// ========================
+// UI EXTEND
+// ========================
+
+document.body.insertAdjacentHTML("beforeend", `
+<br><br>
+<button onclick="forceClear()">เคลียร์แถวทันที</button>
+<button onclick="testAI(20)">AI เล่นต่อ 20 ตา</button>
+<button onclick="debugInfo()">DEBUG</button>
+`);
 </script>
 
 </body>
