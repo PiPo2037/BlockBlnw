@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Block AI</title>
+<style>
+body { background:#222; color:#fff; text-align:center; }
+canvas { background:#111; margin-top:20px; }
+</style>
+</head>
+<body>
+
+<h2>Block AI</h2>
+<canvas id="game" width="320" height="320"></canvas>
+<br>
+<button onclick="runAI()">AI MOVE</button>
+
+<script>
+const SIZE = 8;
+let board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
+
+const shapes = [
+  [[1,1],[1,1]],
+  [[1,1,1]],
+  [[1],[1],[1]],
+  [[1,0],[1,0],[1,1]]
+];
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const cell = 40;
+
+function draw(){
+  ctx.clearRect(0,0,320,320);
+  for(let i=0;i<8;i++){
+    for(let j=0;j<8;j++){
+      ctx.strokeRect(j*40,i*40,40,40);
+      if(board[i][j]){
+        ctx.fillStyle="#4caf50";
+        ctx.fillRect(j*40,i*40,40,40);
+      }
+    }
+  }
+}
+
+function canPlace(shape,x,y){
+  for(let i=0;i<shape.length;i++){
+    for(let j=0;j<shape[0].length;j++){
+      if(shape[i][j]){
+        if(x+i>=8||y+j>=8) return false;
+        if(board[x+i][y+j]) return false;
+      }
+    }
+  }
+  return true;
+}
+
+function place(shape,x,y){
+  for(let i=0;i<shape.length;i++){
+    for(let j=0;j<shape[0].length;j++){
+      if(shape[i][j]){
+        board[x+i][y+j]=1;
+      }
+    }
+  }
+}
+
+function bestMove(shape){
+  for(let x=0;x<8;x++){
+    for(let y=0;y<8;y++){
+      if(canPlace(shape,x,y)){
+        return [x,y];
+      }
+    }
+  }
+  return null;
+}
+
+function runAI(){
+  let shape = shapes[Math.floor(Math.random()*shapes.length)];
+  let move = bestMove(shape);
+
+  if(move){
+    place(shape,move[0],move[1]);
+  } else {
+    alert("GAME OVER");
+  }
+
+  draw();
+}
+
+draw();
+</script>
+
+</body>
+</html>
