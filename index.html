@@ -270,7 +270,8 @@ function searchBestSequence(){
   return bestSeq;
 }
 
-function drawMiniBoard(containerId,b){
+// 🔴 FIX ตรงนี้
+function drawMiniBoard(containerId,b,shape=null,px=0,py=0){
   let container=document.getElementById(containerId);
   container.innerHTML="";
 
@@ -281,7 +282,22 @@ function drawMiniBoard(containerId,b){
       cell.style.height="20px";
       cell.style.display="inline-block";
       cell.style.border="1px solid #333";
-      cell.style.background = b[i][j] ? "#4caf50" : "#111";
+
+      let color = b[i][j] ? "#4caf50" : "#111";
+
+      if(shape){
+        for(let si=0;si<shape.length;si++){
+          for(let sj=0;sj<shape[0].length;sj++){
+            if(shape[si][sj]){
+              if(i===px+si && j===py+sj){
+                color="#ff4444";
+              }
+            }
+          }
+        }
+      }
+
+      cell.style.background=color;
       container.appendChild(cell);
     }
     container.appendChild(document.createElement("br"));
@@ -302,17 +318,20 @@ function showAI(){
 
   seq.forEach((step,index)=>{
     let shape = trimShape(shapes[step.shape]);
-    tempBoard = simulate(tempBoard,shape,step.x,step.y);
 
     let title=document.createElement("div");
-    title.innerText=`STEP ${index+1} → บล็อก ${step.shape} (${step.x},${step.y})`;
+    title.innerText=`STEP ${index+1}`;
     preview.appendChild(title);
 
     let mini=document.createElement("div");
     mini.id="mini_"+index;
     preview.appendChild(mini);
 
-    drawMiniBoard(mini.id,tempBoard);
+    // 🔴 โชว์ก่อนวาง (แดง)
+    drawMiniBoard(mini.id,tempBoard,shape,step.x,step.y);
+
+    // แล้วค่อย simulate
+    tempBoard = simulate(tempBoard,shape,step.x,step.y);
   });
 }
 
