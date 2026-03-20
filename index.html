@@ -28,56 +28,41 @@ button { margin:5px; padding:8px; }
 <div class="preview" id="preview"></div>
 
 <script>
-// =======================
-// STATE
-// =======================
 const SIZE = 8;
 const SHAPE_SIZE = 5;
 
 let board = createBoard();
 let shapes = [createShape(), createShape(), createShape()];
 
-// =======================
-// CREATE
-// =======================
+// ================= CREATE =================
 function createBoard(){
   return Array.from({length:SIZE},()=>Array(SIZE).fill(0));
 }
-
 function createShape(){
   return Array.from({length:SHAPE_SIZE},()=>Array(SHAPE_SIZE).fill(0));
 }
 
-// =======================
-// DRAW BOARD
-// =======================
+// ================= DRAW =================
 const boardCanvas = document.getElementById("board");
 const bctx = boardCanvas.getContext("2d");
 
 function drawBoard(b = board){
   bctx.clearRect(0,0,320,320);
-
   for(let i=0;i<SIZE;i++){
     for(let j=0;j<SIZE;j++){
-
       bctx.strokeStyle="#555";
       bctx.strokeRect(j*40,i*40,40,40);
-
       if(b[i][j]){
         bctx.fillStyle="#4caf50";
         bctx.fillRect(j*40,i*40,40,40);
       }
-
     }
   }
 }
 
-// =======================
-// CLICK BOARD
-// =======================
+// click board
 boardCanvas.addEventListener("click",(e)=>{
   const rect = boardCanvas.getBoundingClientRect();
-
   const x = Math.floor((e.clientY - rect.top)/40);
   const y = Math.floor((e.clientX - rect.left)/40);
 
@@ -87,9 +72,7 @@ boardCanvas.addEventListener("click",(e)=>{
   }
 });
 
-// =======================
-// DRAW SHAPES
-// =======================
+// shapes
 const shapeCanvas = [
   document.getElementById("shape0"),
   document.getElementById("shape1"),
@@ -97,10 +80,8 @@ const shapeCanvas = [
 ];
 
 shapeCanvas.forEach((canvas,index)=>{
-
   canvas.addEventListener("click",(e)=>{
     const rect = canvas.getBoundingClientRect();
-
     const x = Math.floor((e.clientY - rect.top)/40);
     const y = Math.floor((e.clientX - rect.left)/40);
 
@@ -109,41 +90,30 @@ shapeCanvas.forEach((canvas,index)=>{
       drawShape(index);
     }
   });
-
 });
 
 function drawShape(i){
   const ctx = shapeCanvas[i].getContext("2d");
-
   ctx.clearRect(0,0,200,200);
 
   for(let x=0;x<5;x++){
     for(let y=0;y<5;y++){
-
       ctx.strokeStyle="#555";
       ctx.strokeRect(y*40,x*40,40,40);
-
       if(shapes[i][x][y]){
         ctx.fillStyle="#00ff88";
         ctx.fillRect(y*40,x*40,40,40);
       }
-
     }
   }
 }
-
 function drawAllShapes(){
   for(let i=0;i<3;i++) drawShape(i);
 }
 
-// =======================
-// CORE FUNCTIONS
-// =======================
-
-// trim shape
+// ================= CORE =================
 function trimShape(shape){
-  let minX=5,minY=5,maxX=0,maxY=0;
-  let found=false;
+  let minX=5,minY=5,maxX=0,maxY=0,found=false;
 
   for(let i=0;i<5;i++){
     for(let j=0;j<5;j++){
@@ -156,44 +126,36 @@ function trimShape(shape){
       }
     }
   }
-
   if(!found) return [[0]];
 
-  let result=[];
+  let res=[];
   for(let i=minX;i<=maxX;i++){
     let row=[];
     for(let j=minY;j<=maxY;j++){
       row.push(shape[i][j]);
     }
-    result.push(row);
+    res.push(row);
   }
-
-  return result;
+  return res;
 }
 
-// check place
 function canPlace(shape,x,y,b){
   for(let i=0;i<shape.length;i++){
     for(let j=0;j<shape[0].length;j++){
-
       if(shape[i][j]){
         if(x+i>=SIZE || y+j>=SIZE) return false;
         if(b[x+i][y+j]) return false;
       }
-
     }
   }
   return true;
 }
 
-// clear lines (loop until stable)
 function clearLines(b){
   let changed=true;
-
   while(changed){
     changed=false;
 
-    // rows
     for(let i=0;i<SIZE;i++){
       if(b[i].every(v=>v==1)){
         for(let j=0;j<SIZE;j++) b[i][j]=0;
@@ -201,13 +163,11 @@ function clearLines(b){
       }
     }
 
-    // cols
     for(let j=0;j<SIZE;j++){
       let full=true;
       for(let i=0;i<SIZE;i++){
         if(!b[i][j]) full=false;
       }
-
       if(full){
         for(let i=0;i<SIZE;i++) b[i][j]=0;
         changed=true;
@@ -216,7 +176,6 @@ function clearLines(b){
   }
 }
 
-// simulate
 function simulate(board,shape,x,y){
   let temp = board.map(r=>r.slice());
 
@@ -229,13 +188,10 @@ function simulate(board,shape,x,y){
   }
 
   clearLines(temp);
-
   return temp;
 }
 
-// =======================
-// RESET
-// =======================
+// ================= RESET =================
 function resetBoard(){
   board = createBoard();
   shapes = [createShape(), createShape(), createShape()];
@@ -244,16 +200,7 @@ function resetBoard(){
   document.getElementById("preview").innerHTML="";
 }
 
-// =======================
-// INIT
-// =======================
-drawBoard();
-drawAllShapes();
-// =======================
-// AI ENGINE
-// =======================
-
-// ประเมินบอร์ด (ยิ่งโล่งยิ่งดี + ลดรู)
+// ================= AI =================
 function evaluateBoard(b){
   let empty = 0;
   let holes = 0;
@@ -261,35 +208,25 @@ function evaluateBoard(b){
   for(let i=0;i<SIZE;i++){
     for(let j=0;j<SIZE;j++){
       if(!b[i][j]) empty++;
-      else{
-        if(i+1<SIZE && !b[i+1][j]) holes++;
-      }
+      else if(i+1<SIZE && !b[i+1][j]) holes++;
     }
   }
-
   return empty - holes*3;
 }
 
-// ลองวางทุกตำแหน่ง
-function getAllMoves(shape, b){
-  let moves = [];
-
+function getAllMoves(shape,b){
+  let moves=[];
   for(let x=0;x<SIZE;x++){
     for(let y=0;y<SIZE;y++){
-      if(canPlace(shape,x,y,b)){
-        moves.push([x,y]);
-      }
+      if(canPlace(shape,x,y,b)) moves.push([x,y]);
     }
   }
-
   return moves;
 }
 
-// ลองทุกลำดับ 3 บล็อก
 function searchBestSequence(){
-
-  let bestScore = -Infinity;
-  let bestSeq = null;
+  let bestScore=-Infinity;
+  let bestSeq=null;
 
   const perms = [
     [0,1,2],[0,2,1],
@@ -299,132 +236,91 @@ function searchBestSequence(){
 
   for(let p of perms){
 
-    function dfs(depth, currentBoard, steps, score){
-
-      if(depth === 3){
+    function dfs(depth,currentBoard,steps,score){
+      if(depth===3){
         let finalScore = score + evaluateBoard(currentBoard);
-
-        if(finalScore > bestScore){
-          bestScore = finalScore;
-          bestSeq = [...steps];
+        if(finalScore>bestScore){
+          bestScore=finalScore;
+          bestSeq=[...steps];
         }
         return;
       }
 
-      let rawShape = shapes[p[depth]];
-      let shape = trimShape(rawShape);
-
-      // กัน shape ว่าง
-      if(shape.length === 1 && shape[0][0] === 0){
-        dfs(depth+1, currentBoard, steps, score);
+      let shape = trimShape(shapes[p[depth]]);
+      if(shape.length===1 && shape[0][0]===0){
+        dfs(depth+1,currentBoard,steps,score);
         return;
       }
 
-      let moves = getAllMoves(shape, currentBoard);
-
-      if(moves.length === 0){
-        dfs(depth+1, currentBoard, steps, score);
+      let moves = getAllMoves(shape,currentBoard);
+      if(moves.length===0){
+        dfs(depth+1,currentBoard,steps,score);
         return;
       }
 
       for(let [x,y] of moves){
-
-        let nextBoard = simulate(currentBoard, shape, x, y);
-
-        dfs(
-          depth+1,
-          nextBoard,
-          [...steps, {shape:p[depth], x, y}],
-          score
-        );
+        let next = simulate(currentBoard,shape,x,y);
+        dfs(depth+1,next,[...steps,{shape:p[depth],x,y}],score);
       }
     }
 
-    dfs(0, board, [], 0);
+    dfs(0,board,[],0);
   }
 
   return bestSeq;
 }
-  // ========================
-// UI PREVIEW RESULT
-// ========================
 
-function drawMiniBoard(containerId, b){
-  let container = document.getElementById(containerId);
-  container.innerHTML = "";
-
-  let size = 20;
+// ================= UI =================
+function drawMiniBoard(containerId,b){
+  let container=document.getElementById(containerId);
+  container.innerHTML="";
 
   for(let i=0;i<SIZE;i++){
     for(let j=0;j<SIZE;j++){
-      let cell = document.createElement("div");
-      cell.style.width = size+"px";
-      cell.style.height = size+"px";
-      cell.style.display = "inline-block";
-      cell.style.border = "1px solid #333";
-
-      if(b[i][j]){
-        cell.style.background = "#4caf50";
-      } else {
-        cell.style.background = "#111";
-      }
-
+      let cell=document.createElement("div");
+      cell.style.width="20px";
+      cell.style.height="20px";
+      cell.style.display="inline-block";
+      cell.style.border="1px solid #333";
+      cell.style.background = b[i][j] ? "#4caf50" : "#111";
       container.appendChild(cell);
     }
-    let br = document.createElement("br");
-    container.appendChild(br);
+    container.appendChild(document.createElement("br"));
   }
 }
 
-
-// ========================
-// แสดงลำดับ AI
-// ========================
-
 function showAI(){
-  let seq = findBestSequence();
+  let seq = searchBestSequence(); // ✅ FIX
 
-  if(!seq || seq.length === 0){
+  if(!seq || seq.length===0){
     alert("ไม่มีทางวาง");
     return;
   }
 
   let tempBoard = JSON.parse(JSON.stringify(board));
+  let preview = document.getElementById("preview");
+  preview.innerHTML="";
 
-  document.getElementById("preview").innerHTML = "";
-
-  seq.forEach((step, index)=>{
-
+  seq.forEach((step,index)=>{
     let shape = trimShape(shapes[step.shape]);
+    tempBoard = simulate(tempBoard,shape,step.x,step.y);
 
-    tempBoard = simulate(tempBoard, shape, step.x, step.y);
+    let title=document.createElement("div");
+    title.innerText=`STEP ${index+1} → บล็อก ${step.shape} (${step.x},${step.y})`;
+    preview.appendChild(title);
 
-    let title = document.createElement("div");
-    title.innerText = "STEP " + (index+1) + " → บล็อก " + step.shape + " ("+step.x+","+step.y+")";
-    title.style.marginTop = "10px";
-    document.getElementById("preview").appendChild(title);
+    let mini=document.createElement("div");
+    mini.id="mini_"+index;
+    preview.appendChild(mini);
 
-    let mini = document.createElement("div");
-    mini.id = "mini_"+index;
-    mini.style.marginBottom = "10px";
-
-    document.getElementById("preview").appendChild(mini);
-
-    drawMiniBoard(mini.id, tempBoard);
-
+    drawMiniBoard(mini.id,tempBoard);
   });
-
 }
 
-
-// ========================
-// APPLY (เซฟใช้ต่อ)
-// ========================
-
 function applyAI(){
-  let seq = findBestSequence();
+  let seq = searchBestSequence(); // ✅ FIX
 
-  if(!seq || seq.length === 0){
+  if(!seq || seq.length===0){
     alert("ใช้ไม่ได้");
     return;
   }
@@ -433,125 +329,28 @@ function applyAI(){
 
   seq.forEach(step=>{
     let shape = trimShape(shapes[step.shape]);
-    tempBoard = simulate(tempBoard, shape, step.x, step.y);
+    tempBoard = simulate(tempBoard,shape,step.x,step.y);
   });
 
-  board = tempBoard;
-
-  shapes = [createShape(), createShape(), createShape()];
+  board=tempBoard;
+  shapes=[createShape(),createShape(),createShape()];
 
   drawBoard();
   drawAllShapes();
-
-  document.getElementById("preview").innerHTML = "";
+  document.getElementById("preview").innerHTML="";
 }
 
-
-// ========================
-// ปุ่ม UI (เรียกใช้)
-// ========================
+// ================= INIT =================
+drawBoard();
+drawAllShapes();
 
 document.body.insertAdjacentHTML("beforeend", `
 <br><br>
 <button onclick="showAI()">แนะนำลำดับ</button>
 <button onclick="applyAI()">เซฟใช้ต่อไป</button>
 
-<div id="preview" style="margin-top:20px;"></div>
-`); 
-</script>
-<script>
-// ========================
-// FIX BUG + HARDEN SYSTEM
-// ========================
-
-// กัน crash ถ้า shape undefined
-function safeShape(index){
-  if(!shapes[index]) return [[0]];
-  return shapes[index];
-}
-
-// กันค่า NaN / undefined
-function safeBoard(b){
-  if(!b) return createBoard();
-  return b;
-}
-
-// ========================
-// DEBUG PANEL
-// ========================
-
-function debugInfo(){
-  console.log("BOARD:", board);
-  console.log("SHAPES:", shapes);
-}
-
-// ========================
-// AUTO CLEAR FULL LINES (double check)
-// ========================
-
-function forceClear(){
-  clearLines(board);
-  drawBoard();
-}
-
-// ========================
-// TEST AI (stress test)
-// ========================
-
-function testAI(times=10){
-  for(let i=0;i<times;i++){
-    let seq = findBestSequence();
-    if(seq && seq.length){
-      applyAI();
-    } else {
-      break;
-    }
-  }
-}
-
-// ========================
-// VISUAL FEEDBACK SELECT
-// ========================
-
-let selectedIndex = -1;
-
-function highlightSelected(){
-  let buttons = document.querySelectorAll("button[data-shape]");
-  buttons.forEach(btn=>{
-    btn.style.background = "#fff";
-  });
-
-  if(selectedIndex >= 0){
-    let btn = document.querySelector(`button[data-shape="${selectedIndex}"]`);
-    if(btn) btn.style.background = "#4caf50";
-  }
-}
-
-// override selectShape
-function selectShape(index){
-  selectedIndex = index;
-  selectedShape = shapes[index];
-  highlightSelected();
-}
-
-// ========================
-// PREVENT INVALID MOVE
-// ========================
-
-function canUseSequence(seq){
-  if(!seq) return false;
-  return seq.length > 0;
-}
-
-// ========================
-// UI EXTEND
-// ========================
-
-document.body.insertAdjacentHTML("beforeend", `
 <br><br>
-<button onclick="forceClear()">เคลียร์แถวทันที</button>
-<button onclick="testAI(20)">AI เล่นต่อ 20 ตา</button>
-<button onclick="debugInfo()">DEBUG</button>
+<button onclick="clearLines(board);drawBoard()">เคลียร์แถว</button>
 `);
 </script>
 
