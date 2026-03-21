@@ -36,6 +36,7 @@ const COLORS=["#f44","#fa0","#0cf"];
 
 let boardState=Array.from({length:8},()=>Array(8).fill(0));
 let shapes=[mk(),mk(),mk()];
+let lastResult=null;
 
 function mk(){return Array.from({length:5},()=>Array(5).fill(0));}
 
@@ -111,116 +112,53 @@ return 1;
 }
 
 function clear(b){
-let cleared=0;
 let ch=1;
 while(ch){
 ch=0;
-for(let i=0;i<8;i++){
-if(b[i].every(v=>v)){
-for(let j=0;j<8;j++)b[i][j]=0;
-cleared++;
-ch=1;
-}
-}
+for(let i=0;i<8;i++)if(b[i].every(v=>v)){for(let j=0;j<8;j++)b[i][j]=0;ch=1;}
 for(let j=0;j<8;j++){
-let f=1;
-for(let i=0;i<8;i++)if(!b[i][j])f=0;
-if(f){
-for(let i=0;i<8;i++)b[i][j]=0;
-cleared++;
-ch=1;
+let f=1;for(let i=0;i<8;i++)if(!b[i][j])f=0;
+if(f){for(let i=0;i<8;i++)b[i][j]=0;ch=1;}
 }
 }
-}
-return cleared;
 }
 
 function sim(b,s,x,y){
 let t=b.map(r=>r.slice());
 for(let i=0;i<s.length;i++)for(let j=0;j<s[0].length;j++)
 if(s[i][j])t[x+i][y+j]=1;
-let cleared=clear(t);
-return {b:t,cleared};
+clear(t);
+return t;
 }
 
-function evalBoard(b,cleared){
-let empty=0,holes=0,height=0,lines=0,rough=0;
+function evalBoard(b){
+let empty=0,holes=0;
 
 for(let i=0;i<8;i++){
-let rowFull=1;
 for(let j=0;j<8;j++){
-if(!b[i][j]){empty++;rowFull=0;}
-else{
-height+=(8-i);
-if(i+1<8&&!b[i+1][j])holes++;
+if(!b[i][j]) empty++;
+else if(i+1<8&&!b[i+1][j]) holes++;
 }
-}
-if(rowFull) lines++;
 }
 
-for(let j=0;j<8;j++){
-let full=1;
-for(let i=0;i<8;i++) if(!b[i][j]) full=0;
-if(full) lines++;
-}
-
-for(let i=0;i<7;i++)
-for(let j=0;j<8;j++)
-rough+=Math.abs(b[i][j]-b[i+1][j]);
-
-return cleared*200 + lines*100 + empty*2 - holes*20 - height*1.5 - rough*3;
+return empty - holes*5;
 }
 
 function clone(b){return b.map(r=>r.slice());}
-
-function monteCarlo(b,depth=3,roll=20){
-let total=0;
-
-for(let r=0;r<roll;r++){
-let tb=clone(b);
-
-for(let d=0;d<depth;d++){
-let si=Math.floor(Math.random()*3);
-let s=trim(shapes[si]);
-
-let moves=[];
-for(let x=0;x<8;x++)for(let y=0;y<8;y++)
-if(can(s,x,y,tb)) moves.push([x,y]);
-
-if(moves.length===0) break;
-
-let [mx,my]=moves[Math.floor(Math.random()*moves.length)];
-let res=sim(tb,s,mx,my);
-tb=res.b;
-total+=res.cleared*50;
-}
-
-total+=evalBoard(tb,0);
-}
-
-return total/roll;
-}
 
 function search(){
 let bestScore=-Infinity;
 let bestSeq=null;
 
-const perms=[
-[0,1,2],[0,2,1],
-[1,0,2],[1,2,0],
-[2,0,1],[2,1,0]
-];
+const perms=[[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
 
 for(let p of perms){
 
 function dfs(depth,b,steps,score){
 
 if(depth===3){
-let mc=monteCarlo(b,2,10);
-let final=score+mc;
-
-if(final>bestScore){
-bestScore=final;
+if(score>bestScore){
+bestScore=score;
 bestSeq=[...steps];
 }
 return;
@@ -229,64 +167,25 @@ return;
 let si=p[depth];
 let s=trim(shapes[si]);
 
-if(s.length===1&&s[0][0]===0){
-dfs(depth+1,b,steps,score);
-return;
-}
-
 let moved=false;
 
 for(let x=0;x<8;x++)for(let y=0;y<8;y++){
 if(can(s,x,y,b)){
 moved=true;
+let nb=sim(b,s,x,y);
+let sc=evalBoard(nb);
 
-let {b:nb,cleared}=sim(b,s,x,y);
-let sc=evalBoard(nb,cleared);
-
-dfs(
-depth+1,
-nb,
-[...steps,{shape:si,x,y}],
-score+sc
-);
+dfs(depth+1,nb,[...steps,{shape:si,x,y}],score+sc);
 }
 }
 
-if(!moved){
-dfs(depth+1,b,steps,score-100);
-}
-
+if(!moved) dfs(depth+1,b,steps,score-50);
 }
 
 dfs(0,boardState,[],0);
 }
 
 return bestSeq;
-}
-
-function mini(id,b,s=null,x=0,y=0){
-let c=document.getElementById(id);c.innerHTML="";
-for(let i=0;i<8;i++){
-for(let j=0;j<8;j++){
-let d=document.createElement("div");
-d.style.width="20px";
-d.style.height="20px";
-d.style.display="inline-block";
-d.style.border="1px solid #222";
-
-let col=b[i][j]?"#0f0":"#000";
-
-if(s){
-for(let si=0;si<s.length;si++)
-for(let sj=0;sj<s[0].length;sj++)
-if(s[si][sj]&&i===x+si&&j===y+sj) col="#f00";
-}
-
-d.style.background=col;
-c.appendChild(d);
-}
-c.appendChild(document.createElement("br"));
-}
 }
 
 function show(){
@@ -303,28 +202,46 @@ d.innerText="STEP "+(i+1);
 p.appendChild(d);
 
 let m=document.createElement("div");
-m.id="m"+i;
 p.appendChild(m);
 
-mini(m.id,t,s,st.x,st.y);
+for(let x=0;x<8;x++){
+for(let y=0;y<8;y++){
+let cell=document.createElement("div");
+cell.style.width="20px";
+cell.style.height="20px";
+cell.style.display="inline-block";
+cell.style.border="1px solid #222";
 
-let r=sim(t,s,st.x,st.y);
-t=r.b;
-});
+let col=t[x][y]?"#0f0":"#000";
+
+for(let i2=0;i2<s.length;i2++)
+for(let j2=0;j2<s[0].length;j2++)
+if(s[i2][j2]&&x===st.x+i2&&y===st.y+j2) col="#f00";
+
+cell.style.background=col;
+m.appendChild(cell);
+}
+m.appendChild(document.createElement("br"));
 }
 
-function apply(){
-let seq=search();
-let t=clone(boardState);
-
-seq?.forEach(st=>{
-let s=trim(shapes[st.shape]);
-let r=sim(t,s,st.x,st.y);
-t=r.b;
+t=sim(t,s,st.x,st.y);
 });
 
-boardState=t;
+lastResult=t;
+
+let btn=document.createElement("button");
+btn.innerText="ใช้ผลลัพธ์";
+btn.onclick=applyResult;
+p.appendChild(btn);
+}
+
+function applyResult(){
+if(!lastResult) return;
+boardState=lastResult;
+shapes=[mk(),mk(),mk()];
 draw();
+drawS(0);drawS(1);drawS(2);
+document.getElementById("preview").innerHTML="";
 }
 
 function reset(){
@@ -337,8 +254,7 @@ draw();drawS(0);drawS(1);drawS(2);
 
 document.body.insertAdjacentHTML("beforeend",`
 <br>
-<button onclick="show()">AI Ω GOD</button>
-<button onclick="apply()">ใช้</button>
+<button onclick="show()">แนะนำ</button>
 `);
 </script>
 
