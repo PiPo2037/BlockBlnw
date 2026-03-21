@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>BLOCK AI </title>
+<title>Block Puzzle AI</title>
 
 <style>
 html,body{margin:0;background:#111;color:#fff;text-align:center;font-family:sans-serif}
@@ -17,7 +17,7 @@ button{margin:6px;padding:10px;border-radius:8px}
 
 <body>
 
-<h2>OMEGA AI</h2>
+<h2>Block Puzzle AI</h2>
 
 <canvas id="board" width="320" height="320"></canvas>
 <button onclick="reset()">รีเซ็ต</button>
@@ -31,16 +31,15 @@ button{margin:6px;padding:10px;border-radius:8px}
 <div id="preview"></div>
 
 <script>
-const SIZE=8,SHAPE=5;
+const SIZE=8;
 const COLORS=["#f44","#fa0","#0cf"];
 
-let board=Array.from({length:8},()=>Array(8).fill(0));
+let boardState=Array.from({length:8},()=>Array(8).fill(0));
 let shapes=[mk(),mk(),mk()];
-let cache=new Map();
 
 function mk(){return Array.from({length:5},()=>Array(5).fill(0));}
 
-const c=board=document.getElementById("board");
+const c=document.getElementById("board");
 const ctx=c.getContext("2d");
 
 function draw(b=boardState){
@@ -52,14 +51,15 @@ if(b[i][j]){ctx.fillStyle="#0f0";ctx.fillRect(j*40,i*40,40,40);}
 }
 }
 
-let boardState=Array.from({length:8},()=>Array(8).fill(0));
-
 c.addEventListener("touchstart",e=>{
 e.preventDefault();
 let r=c.getBoundingClientRect(),t=e.touches[0];
 let x=Math.floor((t.clientY-r.top)/(r.height/8));
 let y=Math.floor((t.clientX-r.left)/(r.width/8));
-boardState[x][y]^=1;draw();
+if(x>=0&&y>=0&&x<8&&y<8){
+boardState[x][y]^=1;
+draw();
+}
 },{passive:false});
 
 const sc=[s0,s1,s2];
@@ -70,7 +70,10 @@ e.preventDefault();
 let r=cv.getBoundingClientRect(),t=e.touches[0];
 let x=Math.floor((t.clientY-r.top)/(r.height/5));
 let y=Math.floor((t.clientX-r.left)/(r.width/5));
-shapes[i][x][y]^=1;drawS(i);
+if(x>=0&&y>=0&&x<5&&y<5){
+shapes[i][x][y]^=1;
+drawS(i);
+}
 },{passive:false});
 });
 
@@ -108,85 +111,157 @@ return 1;
 }
 
 function clear(b){
+let cleared=0;
 let ch=1;
 while(ch){
 ch=0;
-for(let i=0;i<8;i++)if(b[i].every(v=>v)){for(let j=0;j<8;j++)b[i][j]=0;ch=1;}
+for(let i=0;i<8;i++){
+if(b[i].every(v=>v)){
+for(let j=0;j<8;j++)b[i][j]=0;
+cleared++;
+ch=1;
+}
+}
 for(let j=0;j<8;j++){
-let f=1;for(let i=0;i<8;i++)if(!b[i][j])f=0;
-if(f){for(let i=0;i<8;i++)b[i][j]=0;ch=1;}
+let f=1;
+for(let i=0;i<8;i++)if(!b[i][j])f=0;
+if(f){
+for(let i=0;i<8;i++)b[i][j]=0;
+cleared++;
+ch=1;
 }
 }
+}
+return cleared;
 }
 
 function sim(b,s,x,y){
 let t=b.map(r=>r.slice());
 for(let i=0;i<s.length;i++)for(let j=0;j<s[0].length;j++)
 if(s[i][j])t[x+i][y+j]=1;
-clear(t);
-return t;
+let cleared=clear(t);
+return {b:t,cleared};
 }
 
-function hash(b){
-return b.map(r=>r.join("")).join("");
-}
-
-function evalBoard(b){
-let empty=0,holes=0,height=0,rough=0;
+function evalBoard(b,cleared){
+let empty=0,holes=0,height=0,lines=0,rough=0;
 
 for(let i=0;i<8;i++){
-let colHeight=0;
+let rowFull=1;
 for(let j=0;j<8;j++){
-if(b[i][j])colHeight++;
-else empty++;
-if(b[i][j]&&i+1<8&&!b[i+1][j])holes++;
+if(!b[i][j]){empty++;rowFull=0;}
+else{
+height+=(8-i);
+if(i+1<8&&!b[i+1][j])holes++;
 }
-height+=colHeight*colHeight;
+}
+if(rowFull) lines++;
+}
+
+for(let j=0;j<8;j++){
+let full=1;
+for(let i=0;i<8;i++) if(!b[i][j]) full=0;
+if(full) lines++;
 }
 
 for(let i=0;i<7;i++)
 for(let j=0;j<8;j++)
 rough+=Math.abs(b[i][j]-b[i+1][j]);
 
-return empty*3 - holes*8 - height*0.6 - rough*2;
+return cleared*200 + lines*100 + empty*2 - holes*20 - height*1.5 - rough*3;
+}
+
+function clone(b){return b.map(r=>r.slice());}
+
+function monteCarlo(b,depth=3,roll=20){
+let total=0;
+
+for(let r=0;r<roll;r++){
+let tb=clone(b);
+
+for(let d=0;d<depth;d++){
+let si=Math.floor(Math.random()*3);
+let s=trim(shapes[si]);
+
+let moves=[];
+for(let x=0;x<8;x++)for(let y=0;y<8;y++)
+if(can(s,x,y,tb)) moves.push([x,y]);
+
+if(moves.length===0) break;
+
+let [mx,my]=moves[Math.floor(Math.random()*moves.length)];
+let res=sim(tb,s,mx,my);
+tb=res.b;
+total+=res.cleared*50;
+}
+
+total+=evalBoard(tb,0);
+}
+
+return total/roll;
 }
 
 function search(){
-let depth=6,beam=30;
+let bestScore=-Infinity;
+let bestSeq=null;
 
-let states=[{b:boardState,steps:[],score:0}];
+const perms=[
+[0,1,2],[0,2,1],
+[1,0,2],[1,2,0],
+[2,0,1],[2,1,0]
+];
 
-for(let d=0;d<depth;d++){
-let next=[];
+for(let p of perms){
 
-for(let st of states){
-let key=hash(st.b);
-if(cache.has(key))continue;
-cache.set(key,1);
+function dfs(depth,b,steps,score){
 
-for(let si=0;si<3;si++){
+if(depth===3){
+let mc=monteCarlo(b,2,10);
+let final=score+mc;
+
+if(final>bestScore){
+bestScore=final;
+bestSeq=[...steps];
+}
+return;
+}
+
+let si=p[depth];
 let s=trim(shapes[si]);
 
+if(s.length===1&&s[0][0]===0){
+dfs(depth+1,b,steps,score);
+return;
+}
+
+let moved=false;
+
 for(let x=0;x<8;x++)for(let y=0;y<8;y++){
-if(can(s,x,y,st.b)){
-let nb=sim(st.b,s,x,y);
-let sc=evalBoard(nb);
+if(can(s,x,y,b)){
+moved=true;
 
-next.push({
-b:nb,
-steps:[...st.steps,{shape:si,x,y}],
-score:sc
-});
-}
-}
-}
-}
+let {b:nb,cleared}=sim(b,s,x,y);
+let sc=evalBoard(nb,cleared);
 
-next.sort((a,b)=>b.score-a.score);
-states=next.slice(0,beam);
+dfs(
+depth+1,
+nb,
+[...steps,{shape:si,x,y}],
+score+sc
+);
+}
 }
 
-return states[0]?.steps;
+if(!moved){
+dfs(depth+1,b,steps,score-100);
+}
+
+}
+
+dfs(0,boardState,[],0);
+}
+
+return bestSeq;
 }
 
 function mini(id,b,s=null,x=0,y=0){
@@ -194,7 +269,8 @@ let c=document.getElementById(id);c.innerHTML="";
 for(let i=0;i<8;i++){
 for(let j=0;j<8;j++){
 let d=document.createElement("div");
-d.style.width="20px";d.style.height="20px";
+d.style.width="20px";
+d.style.height="20px";
 d.style.display="inline-block";
 d.style.border="1px solid #222";
 
@@ -203,7 +279,7 @@ let col=b[i][j]?"#0f0":"#000";
 if(s){
 for(let si=0;si<s.length;si++)
 for(let sj=0;sj<s[0].length;sj++)
-if(s[si][sj]&&i===x+si&&j===y+sj)col="#f00";
+if(s[si][sj]&&i===x+si&&j===y+sj) col="#f00";
 }
 
 d.style.background=col;
@@ -215,7 +291,7 @@ c.appendChild(document.createElement("br"));
 
 function show(){
 let seq=search();
-let t=JSON.parse(JSON.stringify(boardState));
+let t=clone(boardState);
 let p=document.getElementById("preview");
 p.innerHTML="";
 
@@ -227,21 +303,28 @@ d.innerText="STEP "+(i+1);
 p.appendChild(d);
 
 let m=document.createElement("div");
-m.id="m"+i;p.appendChild(m);
+m.id="m"+i;
+p.appendChild(m);
 
 mini(m.id,t,s,st.x,st.y);
-t=sim(t,s,st.x,st.y);
+
+let r=sim(t,s,st.x,st.y);
+t=r.b;
 });
 }
 
 function apply(){
 let seq=search();
-let t=JSON.parse(JSON.stringify(boardState));
+let t=clone(boardState);
+
 seq?.forEach(st=>{
 let s=trim(shapes[st.shape]);
-t=sim(t,s,st.x,st.y);
+let r=sim(t,s,st.x,st.y);
+t=r.b;
 });
-boardState=t;draw();
+
+boardState=t;
+draw();
 }
 
 function reset(){
@@ -254,7 +337,7 @@ draw();drawS(0);drawS(1);drawS(2);
 
 document.body.insertAdjacentHTML("beforeend",`
 <br>
-<button onclick="show()">AI Ω</button>
+<button onclick="show()">AI Ω GOD</button>
 <button onclick="apply()">ใช้</button>
 `);
 </script>
